@@ -1,0 +1,68 @@
+{
+  "name": "@pfeiferio/express-params",
+  "version": "0.1.0",
+  "description": "Express middleware for structured, namespace-aware parameter validation",
+  "license": "MIT",
+  "author": "Pascal Pfeifer <pascal@pfeifer.zone>",
+  "sideEffects": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "express",
+    "middleware",
+    "validation",
+    "parameters",
+    "body",
+    "query",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pfeiferio/express-params.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  },
+  "bugs": {
+    "url": "https://github.com/pfeiferio/express-params/issues"
+  },
+  "homepage": "https://github.com/pfeiferio/express-params#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "prepublishOnly": "npm test",
+    "build": "npm run clean && tsc",
+    "clean": "rm -rf dist",
+    "test": "npm run build && node --test",
+    "test:coverage": "npm run build && node --test --experimental-test-coverage --test-coverage-exclude='test/**'",
+    "test:coverage:c8": "npm run build && npx c8 node --test",
+    "test:coverage:lcov": "npm run build && npx c8 --src src node --enable-source-maps --test"
+  },
+  "devDependencies": {
+    "@types/express-serve-static-core": "^5.1.1",
+    "@types/node": "^20.17.9",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@pfeiferio/validator": "^0.3.1",
+    "@types/express": "^5.0.6",
+    "express": "^5.2.1"
+  },
+  "peerDependencies": {
+    "express": ">=5.0.0"
+  }
+}
