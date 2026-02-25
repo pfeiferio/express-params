@@ -1,3 +1,5 @@
+import './types/express.js';
+
 export {withAlias, AliasedParameter} from "./utils/AliasedParameter.js";
 
 export type {ResolvedSearchData, ResolveSearchData} from "./types/types.js";

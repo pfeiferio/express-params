@@ -1,4 +1,4 @@
-import type {ParameterContainer} from "../ParameterContainer.js";
+import type {ParameterContainer} from "../parameter-container/ParameterContainer.js";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -6,3 +6,6 @@ declare module "express-serve-static-core" {
     initParams: (fn: (container: ParameterContainer) => void | Promise<void>) => Promise<Record<string, unknown>>
   }
 }
+
+export {};
+
