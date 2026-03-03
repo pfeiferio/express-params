@@ -40,9 +40,8 @@ export const parameterMiddleware = (
       }
     }
 
-    const searchData = resolveSearchData(req)
-
     req.initParams = async (fn) => {
+      const searchData = resolveSearchData(req)
       const container = new ParameterContainer(searchData)
       await fn(container)
       const result = await container.validate()
