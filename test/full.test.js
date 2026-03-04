@@ -357,4 +357,39 @@ describe('validationOnlyMiddleware', () => {
     const result = await container.validate()
     assert.equal(result.errors.hasErrors(), false)
   })
+
+  it('calls custom requestHandler for ParameterException', async () => {
+    const customHandler = (err, req, res, next) => {
+      res.status(422).json({custom: true, errors: err.errorStore.errors})
+    }
+    const middleware = errorMiddleware(customHandler)
+    const container = new ParameterContainer(makeSearchData({a: 'invalid'}))
+    container.addBodyParameter(paramNumber)
+    const result = await container.validate()
+
+    const err = new ParameterException(result.errors)
+    const res = makeRes()
+    const next = makeNext()
+
+    middleware(err, makeReq(), res, next)
+
+    assert.equal(res.statusCode, 422)
+    assert.deepEqual(res.body, {custom: true, errors: err.errorStore.errors})
+    assert.equal(next.wasCalled(), false)
+  })
+  it('calls custom requestHandler for ValidationOnlyException', () => {
+    const customHandler = (err, req, res, next) => {
+      res.status(200).json({custom: true, data: err.data})
+    }
+    const middleware = validationOnlyMiddleware(customHandler)
+    const err = new ValidationOnlyException({a: 1})
+    const res = makeRes()
+    const next = makeNext()
+
+    middleware(err, makeReq(), res, next)
+
+    assert.equal(res.statusCode, 200)
+    assert.deepEqual(res.body, {custom: true, data: {a: 1}})
+    assert.equal(next.wasCalled(), false)
+  })
 })

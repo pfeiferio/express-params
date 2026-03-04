@@ -5,3 +5,4 @@ dist/
 lcov.info
 service-availabilities
 coverage/
+.DS_Store

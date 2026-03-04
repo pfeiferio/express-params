@@ -1,6 +1,6 @@
 {
   "name": "@pfeiferio/express-params",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Express middleware for structured, namespace-aware parameter validation",
   "license": "MIT",
   "author": "Pascal Pfeifer <pascal@pfeifer.zone>",
@@ -33,8 +33,7 @@
     "url": "git+https://github.com/pfeiferio/express-params.git"
   },
   "publishConfig": {
-    "access": "public",
-    "tag": "alpha"
+    "access": "public"
   },
   "bugs": {
     "url": "https://github.com/pfeiferio/express-params/issues"
