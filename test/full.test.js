@@ -6,6 +6,8 @@ import {
   ParameterContainer,
   ParameterException,
   parameterMiddleware,
+  PostValidationException,
+  throwParameterError,
   ValidationOnlyException,
   validationOnlyMiddleware,
   withAlias
@@ -391,5 +393,181 @@ describe('validationOnlyMiddleware', () => {
     assert.equal(res.statusCode, 200)
     assert.deepEqual(res.body, {custom: true, data: {a: 1}})
     assert.equal(next.wasCalled(), false)
+  })
+})
+
+// ─── ParameterContainer — postValidate / getNamespaceLookup ──────────────────
+
+describe('ParameterContainer — postValidate', () => {
+
+  it('runs post-validation and receives flattened values', async () => {
+    let received
+    const container = new ParameterContainer(makeSearchData({a: 1}))
+    container.addBodyParameter(paramNumber)
+    container.addPostValidation((data) => { received = data })
+    const result = await container.validate()
+    await container.postValidate(container.getValues(), result)
+    assert.deepEqual(received, {a: 1})
+  })
+
+  it('single field throwParameterError adds error with resolved namespace path', async () => {
+    const container = new ParameterContainer(makeSearchData({a: 1}))
+    container.addBodyParameter(paramNumber)
+    container.addPostValidation(() => { throwParameterError('a', 'custom.error') })
+    const result = await container.validate()
+    await container.postValidate(container.getValues(), result)
+    assert.equal(result.errors.hasErrors(), true)
+    assert.equal(result.errors.errors[0].path, 'body.a')
+    assert.equal(result.errors.errors[0].reason, 'custom.error')
+  })
+
+  it('object form throwParameterError adds multiple errors with resolved paths', async () => {
+    const container = new ParameterContainer(makeSearchData({a: 1}, {b: 2}))
+    container.addBodyParameter(paramNumber)
+    container.addQueryParameter(paramNumberB)
+    container.addPostValidation(() => { throwParameterError({a: 'err.a', b: 'err.b'}) })
+    const result = await container.validate()
+    await container.postValidate(container.getValues(), result)
+    assert.equal(result.errors.hasErrors(), true)
+    const paths = result.errors.errors.map(e => e.path)
+    assert.ok(paths.includes('body.a'))
+    assert.ok(paths.includes('query.b'))
+  })
+
+  it('collects errors from multiple post-validations', async () => {
+    const container = new ParameterContainer(makeSearchData({a: 1}, {b: 2}))
+    container.addBodyParameter(paramNumber)
+    container.addQueryParameter(paramNumberB)
+    container.addPostValidation(() => { throwParameterError('a', 'err.a') })
+    container.addPostValidation(() => { throwParameterError('b', 'err.b') })
+    const result = await container.validate()
+    await container.postValidate(container.getValues(), result)
+    assert.equal(result.errors.errors.length, 2)
+  })
+
+  it('re-throws non-PostValidationException errors', async () => {
+    const container = new ParameterContainer(makeSearchData({a: 1}))
+    container.addBodyParameter(paramNumber)
+    const customErr = new Error('db connection failed')
+    container.addPostValidation(() => { throw customErr })
+    const result = await container.validate()
+    await assert.rejects(
+      () => container.postValidate(container.getValues(), result),
+      (err) => err === customErr
+    )
+  })
+})
+
+describe('ParameterContainer — getNamespaceLookup', () => {
+
+  it('maps param names to their namespace', () => {
+    const container = new ParameterContainer(makeSearchData({a: 1}, {b: 2}))
+    container.addBodyParameter(paramNumber)
+    container.addQueryParameter(paramNumberB)
+    const lookup = container.getNamespaceLookup()
+    assert.equal(lookup['a'], 'body')
+    assert.equal(lookup['b'], 'query')
+  })
+})
+
+// ─── parameterMiddleware — post-validation ────────────────────────────────────
+
+describe('parameterMiddleware — post-validation', () => {
+
+  it('throws ParameterException with resolved path when post-validation fails', async () => {
+    const middleware = parameterMiddleware({
+      resolveSearchData: (req) => ({body: req.body, query: req.query ?? {}})
+    })
+    const req = makeReq({body: {a: 1}})
+    middleware(req, makeRes(), makeNext())
+
+    await assert.rejects(
+      () => req.initParams((container) => {
+        container.addBodyParameter(paramNumber)
+        container.addPostValidation(() => { throwParameterError('a', 'custom.error') })
+      }),
+      (err) => {
+        assert.ok(err instanceof ParameterException)
+        assert.equal(err.errorStore.errors[0].path, 'body.a')
+        assert.equal(err.errorStore.errors[0].reason, 'custom.error')
+        return true
+      }
+    )
+  })
+
+  it('does not run post-validation when field validation fails', async () => {
+    let postValidationRan = false
+    const middleware = parameterMiddleware({
+      resolveSearchData: (req) => ({body: req.body, query: req.query ?? {}})
+    })
+    const req = makeReq({body: {a: 'invalid'}})
+    middleware(req, makeRes(), makeNext())
+
+    await assert.rejects(
+      () => req.initParams((container) => {
+        container.addBodyParameter(paramNumber)
+        container.addPostValidation(() => { postValidationRan = true })
+      }),
+      (err) => err instanceof ParameterException
+    )
+    assert.equal(postValidationRan, false)
+  })
+
+  it('sets _paramNamespaces on req after successful initParams', async () => {
+    const middleware = parameterMiddleware({
+      resolveSearchData: (req) => ({body: req.body, query: req.query ?? {}})
+    })
+    const req = makeReq({body: {a: 1}})
+    middleware(req, makeRes(), makeNext())
+
+    await req.initParams((container) => {
+      container.addBodyParameter(paramNumber)
+    })
+
+    assert.deepEqual(req._paramNamespaces, {a: 'body'})
+  })
+})
+
+// ─── errorMiddleware — PostValidationException ────────────────────────────────
+
+describe('errorMiddleware — PostValidationException', () => {
+
+  it('responds with 400 and resolves namespace from req._paramNamespaces', () => {
+    const middleware = errorMiddleware()
+    const err = new PostValidationException({a: 'custom.error'})
+    const req = makeReq({_paramNamespaces: {a: 'body'}})
+    const res = makeRes()
+    const next = makeNext()
+
+    middleware(err, req, res, next)
+
+    assert.equal(res.statusCode, 400)
+    assert.equal(next.wasCalled(), false)
+    assert.equal(res.body[0].path, 'body.a')
+    assert.equal(res.body[0].reason, 'custom.error')
+  })
+
+  it('falls back to name as path when _paramNamespaces is not set', () => {
+    const middleware = errorMiddleware()
+    const err = new PostValidationException({a: 'custom.error'})
+    const res = makeRes()
+
+    middleware(err, makeReq(), res, makeNext())
+
+    assert.equal(res.statusCode, 400)
+    assert.equal(res.body[0].path, 'a')
+  })
+
+  it('calls custom handler with ParameterException for PostValidationException', () => {
+    let receivedErr
+    const customHandler = (err, _req, _res, _next) => { receivedErr = err }
+    const middleware = errorMiddleware(customHandler)
+    const err = new PostValidationException({a: 'custom.error'})
+    const req = makeReq({_paramNamespaces: {a: 'body'}})
+
+    middleware(err, req, makeRes(), makeNext())
+
+    assert.ok(receivedErr instanceof ParameterException)
+    assert.equal(receivedErr.errorStore.errors[0].path, 'body.a')
   })
 })

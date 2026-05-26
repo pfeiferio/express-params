@@ -12,3 +12,4 @@ export {parameterMiddleware} from "./middlewares/ParameterMiddleware.js";
 
 export {ParameterException, isParameterError} from "./errors/ParameterException.js";
 export {ValidationOnlyException, isValidationOnlyException} from "./errors/ValidationOnlyException.js";
+export {throwParameterError, isPostValidationError, PostValidationException} from "./errors/PostValidationException.js";

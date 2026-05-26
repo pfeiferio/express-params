@@ -44,6 +44,7 @@ export const parameterMiddleware = (
       const searchData = resolveSearchData(req)
       const container = new ParameterContainer(searchData)
       await fn(container)
+
       const result = await container.validate()
       if (result.errors.hasErrors()) {
         throw new ParameterException(result.errors)
@@ -51,7 +52,13 @@ export const parameterMiddleware = (
 
       const data = container.getValues()
 
+      await container.postValidate(data, result)
+      if (result.errors.hasErrors()) {
+        throw new ParameterException(result.errors)
+      }
+
       if (req.validationOnly) throw new ValidationOnlyException(data)
+      req._paramNamespaces = container.getNamespaceLookup()
 
       return data
     }
