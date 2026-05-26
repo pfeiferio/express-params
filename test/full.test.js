@@ -445,6 +445,25 @@ describe('ParameterContainer — postValidate', () => {
     assert.equal(result.errors.errors.length, 2)
   })
 
+  it('returns aliased value under the given key', async () => {
+    const container = new ParameterContainer(makeSearchData({a: 1}))
+    container.addBodyParameter(paramNumber)
+    container.addPostValidation(async ({a}) => ({enriched: a})).as('extra')
+    const result = await container.validate()
+    const aliased = await container.postValidate(container.getValues(), result)
+    assert.deepEqual(aliased, {extra: {enriched: 1}})
+    assert.equal(result.errors.hasErrors(), false)
+  })
+
+  it('ignores return value when no alias is set', async () => {
+    const container = new ParameterContainer(makeSearchData({a: 1}))
+    container.addBodyParameter(paramNumber)
+    container.addPostValidation(async () => 'ignored')
+    const result = await container.validate()
+    const aliased = await container.postValidate(container.getValues(), result)
+    assert.deepEqual(aliased, {})
+  })
+
   it('re-throws non-PostValidationException errors', async () => {
     const container = new ParameterContainer(makeSearchData({a: 1}))
     container.addBodyParameter(paramNumber)
@@ -511,6 +530,22 @@ describe('parameterMiddleware — post-validation', () => {
       (err) => err instanceof ParameterException
     )
     assert.equal(postValidationRan, false)
+  })
+
+  it('merges aliased post-validation return value into result', async () => {
+    const middleware = parameterMiddleware({
+      resolveSearchData: (req) => ({body: req.body, query: req.query ?? {}})
+    })
+    const req = makeReq({body: {a: 1}})
+    middleware(req, makeRes(), makeNext())
+
+    const data = await req.initParams((container) => {
+      container.addBodyParameter(paramNumber)
+      container.addPostValidation(async ({a}) => ({enriched: a})).as('extra')
+    })
+
+    assert.deepEqual(data.extra, {enriched: 1})
+    assert.equal(data.a, 1)
   })
 
   it('sets _paramNamespaces on req after successful initParams', async () => {

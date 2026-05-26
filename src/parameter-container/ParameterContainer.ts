@@ -1,6 +1,6 @@
 import type {Parameter, SchemaValidationResult} from "@pfeiferio/validator";
 import {createParameter, Schema, SearchStore} from "@pfeiferio/validator";
-import type {PostValidationFn, ResolvedSearchData} from "../types/types.js";
+import type {PostValidationBuilder, PostValidationFn, ResolvedSearchData} from "../types/types.js";
 import {AliasedParameter} from "../utils/AliasedParameter.js";
 import {isPostValidationError} from "../errors/PostValidationException.js";
 
@@ -14,7 +14,7 @@ export class ParameterContainer<T extends boolean = false> {
 
   readonly #namespaceRoots: Record<string, Parameter> = {}
 
-  readonly #postValidations: PostValidationFn[] = []
+  readonly #postValidations: {fn: PostValidationFn, alias?: string}[] = []
 
   constructor(searchData: ResolvedSearchData) {
 
@@ -60,9 +60,12 @@ export class ParameterContainer<T extends boolean = false> {
     return this
   }
 
-  addPostValidation(fn: PostValidationFn): this {
-    this.#postValidations.push(fn)
-    return this
+  addPostValidation(fn: PostValidationFn): PostValidationBuilder {
+    const entry: {fn: PostValidationFn, alias?: string} = {fn}
+    this.#postValidations.push(entry)
+    return {
+      as(key: string) { entry.alias = key }
+    }
   }
 
   getNamespaceLookup(): Record<string, string> {
@@ -75,10 +78,12 @@ export class ParameterContainer<T extends boolean = false> {
     return lookup
   }
 
-  async postValidate(data: Record<string, unknown>, result: SchemaValidationResult): Promise<void> {
-    for (const fn of this.#postValidations) {
+  async postValidate(data: Record<string, unknown>, result: SchemaValidationResult): Promise<Record<string, unknown>> {
+    const aliased: Record<string, unknown> = {}
+    for (const {fn, alias} of this.#postValidations) {
       try {
-        await fn(data)
+        const returnValue = await fn(data)
+        if (alias !== undefined) aliased[alias] = returnValue
       } catch (err) {
         if (!isPostValidationError(err)) throw err
         const lookup = this.getNamespaceLookup()
@@ -88,6 +93,7 @@ export class ParameterContainer<T extends boolean = false> {
         }
       }
     }
+    return aliased
   }
 
   validate(): Promise<SchemaValidationResult> | SchemaValidationResult {

@@ -5,7 +5,8 @@ import {ParameterException} from "../errors/ParameterException.js";
 export type ResolvedSearchData = Record<string, Record<string, unknown>>
 export type ResolveSearchData = (request: Request) => ResolvedSearchData
 
-export type PostValidationFn = (data: Record<string, unknown>) => void | Promise<void>
+export type PostValidationFn = (data: Record<string, unknown>) => unknown
+export type PostValidationBuilder = { as(key: string): void }
 
 export type ValidationOnlyRequestHandler =
   (err: ValidationOnlyException, req: Request, res: Response, next: NextFunction) => unknown
