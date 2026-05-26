@@ -40,7 +40,7 @@ export const parameterMiddleware = (
       }
     }
 
-    req.initParams = async (fn) => {
+    req.initParams = (async (fn) => {
       const searchData = resolveSearchData(req)
       const container = new ParameterContainer(searchData)
       await fn(container)
@@ -61,7 +61,7 @@ export const parameterMiddleware = (
       req._paramNamespaces = container.getNamespaceLookup()
 
       return {...data, ...aliased}
-    }
+    }) as typeof req.initParams
 
     next()
   }
