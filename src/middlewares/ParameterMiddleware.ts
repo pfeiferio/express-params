@@ -40,11 +40,11 @@ export const parameterMiddleware = (
       }
     }
 
-    async function initParams<TData extends Record<string, unknown> = Record<string, unknown>>(fn: (container: ParameterContainer<false, TData>) => Promise<void>): Promise<TData> {
+    async function initParams<TData extends Record<string, unknown> = Record<string, unknown>>(fn: (container: ParameterContainer<false, TData>) => void): Promise<TData> {
 
       const searchData = resolveSearchData(req)
       const container = new ParameterContainer<false, TData>(searchData)
-      await fn(container)
+      fn(container)
 
       const result = await container.validate()
       if (result.errors.hasErrors()) {
