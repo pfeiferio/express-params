@@ -4,11 +4,11 @@ import type {PostValidationBuilder, PostValidationFn, ResolvedSearchData} from "
 import {AliasedParameter} from "../utils/AliasedParameter.js";
 import {isPostValidationError} from "../errors/PostValidationException.js";
 
-export class ParameterContainer<T extends boolean = false, TData extends Record<string, unknown> = Record<string, unknown>> {
+export class ParameterContainer<TData extends Record<string, unknown> = Record<string, unknown>> {
 
   readonly #search: SearchStore
 
-  readonly #schema: Schema<T>
+  readonly #schema: Schema<false>
 
   readonly #namespaceParams: Record<string, Record<string, Parameter>> = {}
 
