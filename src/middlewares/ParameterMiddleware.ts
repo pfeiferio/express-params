@@ -40,9 +40,10 @@ export const parameterMiddleware = (
       }
     }
 
-    req.initParams = (async (fn) => {
+    async function initParams<TData extends Record<string, unknown> = Record<string, unknown>>(fn: (container: ParameterContainer<false, TData>) => Promise<void>): Promise<TData> {
+
       const searchData = resolveSearchData(req)
-      const container = new ParameterContainer(searchData)
+      const container = new ParameterContainer<false, TData>(searchData)
       await fn(container)
 
       const result = await container.validate()
@@ -60,8 +61,10 @@ export const parameterMiddleware = (
       if (req.validationOnly) throw new ValidationOnlyException(data)
       req._paramNamespaces = container.getNamespaceLookup()
 
-      return {...data, ...aliased}
-    }) as typeof req.initParams
+      return {...data, ...aliased} as TData
+    }
+
+    req.initParams = initParams
 
     next()
   }

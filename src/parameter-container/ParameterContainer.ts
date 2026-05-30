@@ -4,7 +4,7 @@ import type {PostValidationBuilder, PostValidationFn, ResolvedSearchData} from "
 import {AliasedParameter} from "../utils/AliasedParameter.js";
 import {isPostValidationError} from "../errors/PostValidationException.js";
 
-export class ParameterContainer<T extends boolean = false> {
+export class ParameterContainer<T extends boolean = false, TData extends Record<string, unknown> = Record<string, unknown>> {
 
   readonly #search: SearchStore
 
@@ -14,7 +14,7 @@ export class ParameterContainer<T extends boolean = false> {
 
   readonly #namespaceRoots: Record<string, Parameter> = {}
 
-  readonly #postValidations: {fn: PostValidationFn, alias?: string}[] = []
+  readonly #postValidations: {fn: PostValidationFn<TData>, alias?: string}[] = []
 
   constructor(searchData: ResolvedSearchData) {
 
@@ -60,8 +60,8 @@ export class ParameterContainer<T extends boolean = false> {
     return this
   }
 
-  addPostValidation(fn: PostValidationFn): PostValidationBuilder {
-    const entry: {fn: PostValidationFn, alias?: string} = {fn}
+  addPostValidation(fn: PostValidationFn<TData>): PostValidationBuilder {
+    const entry: {fn: PostValidationFn<TData>, alias?: string} = {fn}
     this.#postValidations.push(entry)
     return {
       as(key: string) { entry.alias = key }
@@ -82,7 +82,7 @@ export class ParameterContainer<T extends boolean = false> {
     const aliased: Record<string, unknown> = {}
     for (const {fn, alias} of this.#postValidations) {
       try {
-        const returnValue = await fn(data)
+        const returnValue = await fn(data as TData)
         if (alias !== undefined) aliased[alias] = returnValue
       } catch (err) {
         if (!isPostValidationError(err)) throw err

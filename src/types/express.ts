@@ -3,7 +3,7 @@ import type {ParameterContainer} from "../parameter-container/ParameterContainer
 declare module "express-serve-static-core" {
   interface Request {
     validationOnly?: boolean
-    initParams: <T extends Record<string, unknown> = Record<string, unknown>>(fn: (container: ParameterContainer) => void | Promise<void>) => Promise<T>
+    initParams: <T extends Record<string, unknown> = Record<string, unknown>>(fn: (container: ParameterContainer<false, T>) => Promise<void>) => Promise<T>
     _paramNamespaces?: Record<string, string>
   }
 }
