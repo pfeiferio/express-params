@@ -1,6 +1,7 @@
 import type {Parameter, SchemaValidationResult} from "@pfeiferio/validator";
 import {createParameter, Schema, SearchStore} from "@pfeiferio/validator";
 import type {PostValidationBuilder, PostValidationFn, ResolvedSearchData} from "../types/types.js";
+import type {ValidationContext} from "../middlewares/ParameterMiddleware.js";
 import {AliasedParameter} from "../utils/AliasedParameter.js";
 import {isPostValidationError} from "../errors/PostValidationException.js";
 
@@ -14,10 +15,13 @@ export class ParameterContainer<TData extends Record<string, unknown> = Record<s
 
   readonly #namespaceRoots: Record<string, Parameter> = {}
 
-  readonly #postValidations: {fn: PostValidationFn<TData>, alias?: string}[] = []
+  readonly #postValidations: { fn: PostValidationFn<TData>, alias?: string }[] = []
 
-  constructor(searchData: ResolvedSearchData) {
+  readonly #validationContext: ValidationContext | undefined
 
+  constructor(searchData: ResolvedSearchData, validationContext?: ValidationContext) {
+
+    this.#validationContext = validationContext
     this.#schema = new Schema();
     this.#search = new SearchStore(searchData)
 
@@ -61,10 +65,12 @@ export class ParameterContainer<TData extends Record<string, unknown> = Record<s
   }
 
   addPostValidation(fn: PostValidationFn<TData>): PostValidationBuilder {
-    const entry: {fn: PostValidationFn<TData>, alias?: string} = {fn}
+    const entry: { fn: PostValidationFn<TData>, alias?: string } = {fn}
     this.#postValidations.push(entry)
     return {
-      as(key: string) { entry.alias = key }
+      as(key: string) {
+        entry.alias = key
+      }
     }
   }
 
@@ -97,6 +103,6 @@ export class ParameterContainer<TData extends Record<string, unknown> = Record<s
   }
 
   validate(): Promise<SchemaValidationResult> | SchemaValidationResult {
-    return this.#schema.validate(this.#search) as SchemaValidationResult
+    return this.#schema.validate(this.#search, this.#validationContext) as SchemaValidationResult
   }
 }

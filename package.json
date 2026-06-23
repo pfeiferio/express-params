@@ -1,6 +1,6 @@
 {
   "name": "@pfeiferio/express-params",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Express middleware for structured, namespace-aware parameter validation",
   "license": "MIT",
   "author": "Pascal Pfeifer <pascal@pfeifer.zone>",
@@ -58,7 +58,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@pfeiferio/validator": "^0.5.0",
+    "@pfeiferio/validator": "^0.6.0",
     "@types/express": "^5.0.6",
     "express": ">=5.0.0"
   },

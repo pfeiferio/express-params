@@ -1,20 +1,23 @@
-import type {RequestHandler} from "express"
+import type {Request, RequestHandler} from "express"
 import type {ResolveSearchData} from "../types/types.js";
 import {ParameterException} from "../errors/ParameterException.js";
 import {ParameterContainer} from "../parameter-container/ParameterContainer.js";
 import {ValidationOnlyException} from "../errors/ValidationOnlyException.js";
+
+export type ValidationContext = Record<string, unknown>
+export type ResolveValidationContext = (req: Request) => ValidationContext
 
 export interface ParameterMiddlewareOptions {
   resolveSearchData: ResolveSearchData,
   validationOnly?: false | {
     header?: string
     value?: string | true | (() => string)
-  }
-
+  },
+  validationContext?: ValidationContext | ResolveValidationContext
 }
 
 export const parameterMiddleware = (
-  {resolveSearchData, validationOnly}: ParameterMiddlewareOptions
+  {resolveSearchData, validationOnly, validationContext}: ParameterMiddlewareOptions
 ): RequestHandler => {
 
   const useValidationOnly = validationOnly !== false
@@ -43,7 +46,8 @@ export const parameterMiddleware = (
     async function initParams<TData extends Record<string, unknown> = Record<string, unknown>>(fn: (container: ParameterContainer<TData>) => void): Promise<TData> {
 
       const searchData = resolveSearchData(req)
-      const container = new ParameterContainer<TData>(searchData)
+      const resolvedContext = typeof validationContext === 'function' ? validationContext(req) : validationContext
+      const container = new ParameterContainer<TData>(searchData, resolvedContext)
       fn(container)
 
       const result = await container.validate()
